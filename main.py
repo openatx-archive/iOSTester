@@ -41,7 +41,7 @@ def on_finish(res):
 class MainHandler(RequestHandler):
     async def get(self):
         refresh_tests()
-        # self.render('index.html', test_list=test_list)
+        self.render('index.html', test_list=test_list)
 
 
 class StopHandler(RequestHandler):
@@ -66,18 +66,26 @@ class TestHandler(RequestHandler):
 
 class HistoryHandler(RequestHandler):
     async def get(self):
-        tasks = await db.task_all()
-        async for task in tasks:
+        tasks = []
+        async for task in db.task_all():
             task['createdAt'] = task['createdAt'].strftime('%Y-%m-%d %H:%M:%S')
+            task['finishedAt'] = task['finishedAt'].strftime('%Y-%m-%d %H:%M:%S')
+            tasks.append(task)
         self.render('history.html', tasks=tasks)
 
 
-application = Application([
-    (r'/', MainHandler),
-    (r'/([^/]+)/test', TestHandler),
-    (r'/tasks/([^/]+)/stop', StopHandler),
-    (r'/tasks/([^/]+)', HistoryHandler)
-])
+current_path = os.path.dirname(__file__)
+
+application = Application(
+    [
+        (r'/', MainHandler),
+        (r'/([^/]+)/test', TestHandler),
+        (r'/tasks/([^/]+)/stop', StopHandler),
+        (r'/tasks', HistoryHandler)
+    ],
+    static_path=os.path.join(current_path,'static'),
+    template_path=os.path.join(current_path, 'templates')
+)
 
 
 def refresh_tests():
