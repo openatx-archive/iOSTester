@@ -19,5 +19,3 @@ def test(c):
     click(s, 0.875, 0.897)
     click(s, 0.876, 0.897)
 
-    s.close()
-

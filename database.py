@@ -24,6 +24,7 @@ def setup():
     print("database init db and tables")
     safe_run(r.db_create(RDB_NAME))
     safe_run(r.db(RDB_NAME).table_create("tasks", primary_key='id'))
+    safe_run(r.db(RDB_NAME).table_create('devices', primary_key='id'))
     print("database init done")
     conn.close()
 

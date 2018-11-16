@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>iOSTester</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+    li {
+        list-style: none;
+    }
+
+    #header {
+        text-align: center;
+        background-color: #008B8B;
+        border-top: 1px solid #8DEEEE;
+        color: #fff;
+    }
+
+	#row1{
+		font-size: 36px;
+		margin-bottom: 0px;
+	}
+
+	#row2{
+		font-size: 16px;
+		font-weight: 200;
+		padding-bottom: 5px;
+	}
+	.summary{
+		text-align: center;
+		background-color: #d8d8d8;
+		color: black;
+		height: 140px;
+	}
+
+	.results{
+		font-size: 26px;
+	}
+
+	p{
+		margin-bottom: 0px;
+	}
+
+	#wrap {
+	    width: 100%;
+	    margin-top: 50px;
+	    overflow: hidden;
+	}
+
+    #tit {
+        height: 60px;
+        width: 50%;
+    }
+
+    #tit span {
+        float: left;
+        height: 60px;
+        line-height: 60px;
+        width: 33%;
+        font-size: 28px;
+        text-align: center;
+        color: black;
+        background: #008B8B;
+        border: 1px solid gray;
+    }
+
+    #con {
+        padding: 50px 80px 0px 80px;
+        border-top: 1px solid black;
+    }
+    #con li{
+        display: none;
+        width: 100%;
+    }
+
+    #tit span.select {
+        background: #dc3545;
+        color: #ccc;
+    }
+
+    #con li.show {
+        display: block;
+    }
+
+    .result p{
+        font-size: 26px;
+    }
+
+    .rowtext p{
+        padding: 25px 0px;
+    }
+
+    #btn{
+        float: right;
+        margin-right: 50px;
+        background-color: #d8d8d8;
+        font-size: 12px;
+        border: 1px solid gray;
+        width: 120px;
+        height: 30px;
+        border-radius: 5%;
+        font-weight: bold;
+    }
+
+    .rowtitle {
+        text-align: center;
+    }
+    .rowhead{
+        font-size: 24px;
+        font-weight: bold;
+    }
+    .rowcell{
+        margin-bottom: 10px;
+    }
+
+    #detail button{
+        background-color: #d8d8d8;
+        font-size: 12px;
+        border: 1px solid gray;
+        width: 60px;
+        height: 30px;
+        border-radius: 5%;
+        font-weight: bold;
+    }
+
+    .graph {
+        margin-bottom: 40px;
+    }
+
+    aside {
+        position: fixed;
+        right: 1px;
+        top: 40%;
+        width: 100px;
+        height: 270px;
+        background-color: #1abc9c;
+    }
+
+    aside a {
+        display: inline-block;
+        height: 11%;
+        width: 100%;
+        line-height: 30px;
+        text-align: center;
+        color: #fff;
+        border-top: 1px solid #fff;
+    }
+
+    #stage {
+        margin-top: 50px;
+    }
+
+    #stage table tr{
+        height: 60px;
+        line-height: 60px;
+    }
+
+    #stage table{
+        background-color: #f7f7f7;
+    }
+
+    .success{
+        background-color: #e7f8e4;
+        color: #848c82;
+    }
+
+    .failure{
+        background-color: #cf4b52
+        color: #848c82;
+    }
+
+    .inprogress{
+        background-color: #ded885;
+        color: #848c82;
+    }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.staticfile.org/popper.js/1.12.5/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.3/dist/vue.js"></script>
+    <script src="https://cdn.bootcss.com/echarts/4.2.0-rc.2/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.20.1/moment.min.js"></script>
+</head>
+<body>
+<div id="app">
+    <header id="header">
+      <div class="container">
+        <div class="col-sm-12 title">
+          <p id="row1">iOSTester</p>
+          <p id="row2">iOS的自动化测试平台</p>
+        </div>
+      </div>
+    </header>
+    <div class="row summary" style="margin: 0px;">
+        <div class="col-sm-4 m-auto cell">
+			<div class="row m-auto" style="padding-left: 30px;">
+                <span><img src="http://arch.s3.netease.com/hzdev-appci/Android.png" style="height:50px;width:50px;"></span>
+                <div class="align-items-center">
+                    <p style="line-height:50px;">asdfasf</p>
+                </div>
+            </div>
+		</div>
+        <div class="col-sm-4 m-auto">
+			<p>触发时间：111</p>
+			<p>平均时长：111</p>
+		</div>
+		<div class="col-sm-4 m-auto">
+			<div>
+				<p>成功：2</p>
+				<p>失败：1</p>
+			</div>
+		</div>
+
+	</div>
+    <div id="wrap">
+        <div id="tit">
+            <span class="select">测试总览</span>
+            <span>测试详情</span>
+        </div>
+        <ul id="con">
+            <li id="detail">
+                <div class="row rowhead rowcell">
+                    <div class="col-sm-8 rowtitle">
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <p>设备</p>
+                            </div>
+                            <div class="col-sm-3">
+                                <p>运行结果</p>
+                            </div>
+                            <div class="col-sm-3">
+                                <p>运行时长</p>
+                            </div>
+                            <div class="col-sm-3">
+                                <p>测试报告</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <p>异常信息</p>
+                    </div>
+
+                </div>
+                <div class="row rowcell" v-for="task in task_list">
+                    <div class="col-sm-8 rowtitle">
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <p>{{!task.test_name}}</p>
+                            </div>
+                            <div class="col-sm-3">
+                                <p>{{!task.result}}</p>
+                            </div>
+                            <div class="col-sm-3">
+                                <p>{{!task.duration}}</p>
+                            </div>
+                            <div class="col-sm-3">
+                                <a target="_blank" v-if="task.jenkinsEnvironment" :href='task.jenkinsEnvironment.BUILD_URL + "HTML_Report"'>
+                                <i class="fa fa-bar-chart"></i>
+                            </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <p>{{!task.exception || "无"}}</p>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>
+</body>
+<script>
+    var result = {% raw json_encode(result) %};
+    var task_list = {% raw json_encode(task_list) %};
+    console.log(task_list);
+    var app2 = new Vue({
+        el: "#app",
+        data: {
+            result: result,
+            task_list: task_list
+        },
+        mounted: function () {
+            var _this = this;
+            $('#tit span').click(function() {
+                var i = $(this).index();
+                $(this).addClass('select').siblings().removeClass('select');
+                $('#con li').eq(i).show().siblings().hide();
+                if(i==1){
+                    _this.draw();
+                }
+            });
+        }
+    })
+
+</script>
+</html>

@@ -2,8 +2,7 @@
 <html>
 
 <head>
-    <title>首页</title>
-    <link rel="shortcut icon" href="{{static_url('favicon.png')}}" />
+    <title>历史记录</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap-theme.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
@@ -21,13 +20,19 @@
         background-color: #cf4b52
         color: #848c82;
     }
+
+    #termbutton{
+        height: 20px;
+        line-height: 20px;
+    }
     </style>
 </head>
 
 <body>
 <div id="app">
-    <nav class="navbar navbar-expand-sm bg-light" style="padding-left: 400px;">
+    <nav class="navbar navbar-expand-sm bg-light" style="padding-left: 15%;">
                 <a class="navbar-brand" href="/" style="color: #4797d6"><b>H</b>56</a>
+                <a class="navbar-brand" href='/tasks' style="color: #23527c;margin-left: 100px;"><i class="fa fa-history"></i> 历史</a>
     </nav>
 
     <div class="container">
@@ -35,20 +40,22 @@
             <table class="table table-hover text-center" action="" method="post">
                 <thead>
                   <tr>
-                    <th>id</th>
-                    <th>创建时间</th>
-                    <th>结束时间</th>
-                    <th>任务名称</th>
-                    <th>执行结果</th>
+                      <th>任务名称</th>
+                      <th>创建时间</th>
+                      <th>结束时间</th>
+                      <th>执行结果</th>
+                      <th>终止任务</th>
+                      <th>详细日志</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="task in tasks">
-                    <td>{{!task.id}}</td>
-                    <td>{{!task.createdAt}}</td>
-                    <td>{{!task.finishedAt}}</td>
-                    <td>{{!task.task_name}}</td>
+                      <td>{{!task.task_name}}</td>
+                      <td>{{!task.createdAt}}</td>
+                      <td>{{!task.finishedAt}}</td>
                       <td :class="[task.result==='success'? 'success':'']">{{!task.result}}</td>
+                      <td><input type="button" v-if="task.result==='暂未完成'" id="termbutton" value="终止" @click="terminate(task.id)"></td>
+                      <td><a :href='"tasks/"+task.id+"/report"'>日志</a></td>
                   </tr>
                 </tbody>
             </table>
@@ -62,6 +69,11 @@
         el: "#app",
         data: {
             tasks: tasks
+        },
+        methods: {
+            terminate(id) {
+                $.get('tasks/' + id + '/stop', function(res){alert("测试已终止")})
+            }
         }
     });
 </script>

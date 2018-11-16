@@ -1,22 +1,24 @@
 from concurrent.futures import ThreadPoolExecutor
 
-from tornado import ioloop
-from tornado.web import RequestHandler, Application
+from tornado import ioloop, iostream
+from tornado.web import RequestHandler, StaticFileHandler, Application
 
 import database
 from database import db, time_now
 from tasks import Task
 
 import os
-import asyncio
 
-thread_pool = ThreadPoolExecutor()
+
+thread_pool = ThreadPoolExecutor(max_workers=1)
 task_list = {}
+device_list = {}
 test_list = []
 
 
 def on_finish(res):
-    task_id, result = res.result()
+    task_id, device_id, result = res.result()
+    device_list[device_id]['status'] = 'idle'
     db_task = {
         'id': task_id,
         'finishedAt': time_now()
@@ -61,7 +63,7 @@ class TestHandler(RequestHandler):
             'task_name': task.test_name
         }
         await db.task_save(db_task)
-        thread_pool.submit(task.run_task, task_list).add_done_callback(on_finish)
+        thread_pool.submit(task.run_task, task_list, device_list).add_done_callback(on_finish)
 
 
 class HistoryHandler(RequestHandler):
@@ -69,9 +71,30 @@ class HistoryHandler(RequestHandler):
         tasks = []
         async for task in db.task_all():
             task['createdAt'] = task['createdAt'].strftime('%Y-%m-%d %H:%M:%S')
-            task['finishedAt'] = task['finishedAt'].strftime('%Y-%m-%d %H:%M:%S')
+            if 'finishedAt' in task:
+                task['finishedAt'] = task['finishedAt'].strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                task['finishedAt'] = '暂未完成'
+                task['result'] = '暂未完成'
             tasks.append(task)
         self.render('history.html', tasks=tasks)
+
+
+class ReportHandler(RequestHandler):
+    async def get(self, task_id):
+        chunk_size = 1024*1024*2
+        with open('test_reports/' + task_id + '/log.txt') as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                try:
+                    self.write(chunk)
+                    await self.flush()
+                except iostream.StreamClosedError:
+                    break
+                finally:
+                    del chunk
 
 
 current_path = os.path.dirname(__file__)
@@ -81,10 +104,12 @@ application = Application(
         (r'/', MainHandler),
         (r'/([^/]+)/test', TestHandler),
         (r'/tasks/([^/]+)/stop', StopHandler),
-        (r'/tasks', HistoryHandler)
+        (r'/tasks', HistoryHandler),
+        (r'/tasks/([^/]+)/report', ReportHandler)
     ],
-    static_path=os.path.join(current_path,'static'),
-    template_path=os.path.join(current_path, 'templates')
+    static_path=os.path.join(current_path, 'static'),
+    template_path=os.path.join(current_path, 'templates'),
+    debug=True
 )
 
 
@@ -94,14 +119,19 @@ def refresh_tests():
     count = 0
     for file in file_list:
         filename_split = os.path.splitext(file)
-        if filename_split[1] == '.py':
+        if filename_split[1] == '.py' and filename_split[0] != '__init__':
             test_list.append(filename_split[0])
             count += 1
     print('found {0} tests'.format(count))
 
 
+def init_devices():
+    device_list['5ac0a2d0e9a44dd22011faa99f5c79f7047a12fe'] = {'name': 'donglai', 'port': '8100', 'status': 'idle'}
+
+
 if __name__ == '__main__':
     database.setup()
     refresh_tests()
+    init_devices()
     application.listen(9999)
     ioloop.IOLoop.instance().start()
