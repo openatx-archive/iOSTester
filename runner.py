@@ -1,7 +1,6 @@
 import sys
 import wda
 from tests import *
-import time
 import signal
 
 
@@ -16,19 +15,16 @@ def check_alive(c):
         return False
 
 
-def run_test(c, retries):
+def run_test(c):
     try:
         eval(test_name).test(c)
-        return True
+        return 0
     except:
         is_alive = check_alive(c)
-        if retries == 3:
-            return False
-        elif not is_alive:
-            time.sleep(30)
-            run_test(c, retries+1)
+        if is_alive:
+            return 1
         else:
-            return False
+            return 3
 
 
 if __name__ == '__main__':
@@ -44,9 +40,6 @@ if __name__ == '__main__':
 
     signal.signal(signal.SIGTERM, on_close)
 
-    result = run_test(c, 0)
+    result = run_test(c)
 
-    if result:
-        sys.exit(0)
-    else:
-        sys.exit(1)
+    sys.exit(result)
