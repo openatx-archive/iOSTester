@@ -82,6 +82,13 @@ class DB(object):
         task_id, _ = await self.update_or_insert("tasks", task)
         return task_id
 
+    async def device_save(self, device: dict, primary_key='id'):
+        if primary_key in device:
+            id = device[primary_key]
+            ret = await self.run(r.table('devices').get(id).update(device))
+        await self.run(r.table('devices').insert(device))
+        assert ret['errors'] == 0
+
     async def _get_all(self, table_name: str, filter=None):
         """
         Args:
@@ -114,6 +121,9 @@ class DB(object):
         Required Python 3.6
         """
         return self._get_all("tasks", filter)
+
+    def device_all(self, filter=None):
+        return self._get_all('devices', filter)
 
 
 db = DB(RDB_HOST, RDB_PORT, RDB_NAME)

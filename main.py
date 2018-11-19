@@ -8,21 +8,31 @@ from database import db, time_now
 from tasks import Task
 
 import os
+import time
+import threading
+from queue import Queue
+import queue
+import rethinkdb as r
 
 
 thread_pool = ThreadPoolExecutor(max_workers=1)
 task_list = {}
-device_list = {}
+task_queue = Queue()
 test_list = []
+conn = r.connect(db='iOSTest')
 
 
 def on_finish(res):
     task_id, device_id, result = res.result()
-    device_list[device_id]['status'] = 'idle'
     db_task = {
         'id': task_id,
         'finishedAt': time_now()
     }
+    device = {
+        'id': device_id,
+        'status': 'idle'
+    }
+
     if result == 0:
         db_task['result'] = 'success'
         print('{0} succeeded'.format(task_id))
@@ -32,9 +42,14 @@ def on_finish(res):
     elif result == 2:
         db_task['result'] = 'terminated'
         print('{0} terminated'.format(task_id))
+    elif result == 3:
+        task_list[task_id].retry = True
+        task_queue.put(task_list[task_id])
+        db_task['result'] = '等待重试'
 
     async def save_result():
         await db.task_save(db_task)
+        await db.device_save(device)
 
     ioloop.IOLoop.current().add_callback(save_result)
     task_list.pop(task_id)
@@ -63,7 +78,7 @@ class TestHandler(RequestHandler):
             'task_name': task.test_name
         }
         await db.task_save(db_task)
-        thread_pool.submit(task.run_task, task_list, device_list).add_done_callback(on_finish)
+        task_queue.put(task)
 
 
 class HistoryHandler(RequestHandler):
@@ -125,13 +140,32 @@ def refresh_tests():
     print('found {0} tests'.format(count))
 
 
-def init_devices():
-    device_list['5ac0a2d0e9a44dd22011faa99f5c79f7047a12fe'] = {'name': 'donglai', 'port': '8100', 'status': 'idle'}
+class TaskManager(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        while True:
+            try:
+                found_device = False
+                while not found_device:
+                    for device in r.table('devices').run(conn):
+                        if device['status'] == 'idle':
+                            task = task_queue.get(block=True, timeout=1)
+                            device['status'] = 'occupied'
+                            r.table('devices').get(device['id']).update(device).run(conn)
+                            if task.retry:
+                                r.table('tasks').get(task.id).update({'result': '重试中'})
+                            thread_pool.submit(task.run_task, task_list, device).add_done_callback(on_finish)
+            except queue.Empty:
+                print('no pending task')
+                time.sleep(5)
 
 
 if __name__ == '__main__':
     database.setup()
     refresh_tests()
-    init_devices()
+    task_manager = TaskManager()
+    task_manager.start()
     application.listen(9999)
     ioloop.IOLoop.instance().start()
