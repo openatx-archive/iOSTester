@@ -113,14 +113,15 @@ class DB(object):
         finally:
             conn.close()
 
-    def task_all(self, filter=None):
+    async def task_all(self, filter=None):
         """
         Return
             Async Generator
 
         Required Python 3.6
         """
-        return self._get_all("tasks", filter)
+        return await self.run(
+            r.table("tasks").order_by(r.desc("createdAt")))
 
     def device_all(self, filter=None):
         return self._get_all('devices', filter)

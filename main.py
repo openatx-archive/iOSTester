@@ -85,7 +85,7 @@ class TestHandler(RequestHandler):
 class HistoryHandler(RequestHandler):
     async def get(self):
         tasks = []
-        async for task in db.task_all():
+        for task in (await db.task_all()):
             task['createdAt'] = task['createdAt'].strftime('%Y-%m-%d %H:%M:%S')
             if 'finishedAt' in task:
                 task['finishedAt'] = task['finishedAt'].strftime('%Y-%m-%d %H:%M:%S')

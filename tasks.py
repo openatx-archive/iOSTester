@@ -2,6 +2,7 @@ import subprocess
 import uuid
 import os
 import rethinkdb as r
+import traceback
 
 conn = r.connect(db='iOSTest')
 
@@ -14,13 +15,14 @@ class Task(object):
         self.retry = False
         self.process = None
 
-        os.mkdir('test_reports/' + self.id)
+        os.makedirs('test_reports/' + self.id, exist_ok=True)
+        # os.mkdir('test_reports/' + self.id)
 
     def run_task(self, tasks, device):
         try:
             with open('test_reports/' + self.id + '/log.txt', 'w+') as f:
                 self.process = subprocess.Popen(['python3', '-u', 'runner.py',
-                                                 self.test_name, device['port']],
+                                                 self.test_name, str(device['port'])],
                                                 stdout=f, stderr=f)
             tasks[self.id] = self
             r.table('tasks').get(self.id).update({'device': device['name']}).run(conn)
@@ -32,5 +34,5 @@ class Task(object):
             else:
                 return self.id, device['id'], return_code
         except Exception as e:
-            print(e)
+            traceback.print_exc(e)
             return self.id, device['id'], 1

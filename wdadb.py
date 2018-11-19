@@ -7,7 +7,7 @@ import os
 
 RDB_HOST =  os.environ.get('RDB_HOST') or 'localhost'
 RDB_PORT = os.environ.get('RDB_PORT') or 28015
-RDB_DBNAME = os.environ.get("RDB_DBNAME") or "iOSTester"
+RDB_DBNAME = os.environ.get("RDB_DBNAME") or "iOSTest"
 
 def init_db():
     conn = r.connect(RDB_HOST, RDB_PORT)
