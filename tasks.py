@@ -1,6 +1,9 @@
 import subprocess
 import uuid
 import os
+import rethinkdb as r
+
+conn = r.connect(db='iOSTest')
 
 
 class Task(object):
@@ -10,6 +13,7 @@ class Task(object):
         self.terminated = False
         self.retry = False
         self.process = None
+
         os.mkdir('test_reports/' + self.id)
 
     def run_task(self, tasks, device):
@@ -19,6 +23,7 @@ class Task(object):
                                                  self.test_name, device['port']],
                                                 stdout=f, stderr=f)
             tasks[self.id] = self
+            r.table('tasks').get(self.id).update({'device': device['name']}).run(conn)
             print('run test ' + self.id + ' on device ' + device['name'])
             self.process.wait()
             return_code = self.process.poll()
@@ -26,5 +31,6 @@ class Task(object):
                 return self.id, device['id'], 2
             else:
                 return self.id, device['id'], return_code
-        except:
+        except Exception as e:
+            print(e)
             return self.id, device['id'], 1

@@ -46,6 +46,7 @@ def on_finish(res):
         task_list[task_id].retry = True
         task_queue.put(task_list[task_id])
         db_task['result'] = '等待重试'
+        print('{0} waiting for retry'.format(task_id))
 
     async def save_result():
         await db.task_save(db_task)
@@ -155,7 +156,7 @@ class TaskManager(threading.Thread):
                             device['status'] = 'occupied'
                             r.table('devices').get(device['id']).update(device).run(conn)
                             if task.retry:
-                                r.table('tasks').get(task.id).update({'result': '重试中'})
+                                r.table('tasks').get(task.id).update({'result': '重试中'}).run(conn)
                             thread_pool.submit(task.run_task, task_list, device).add_done_callback(on_finish)
             except queue.Empty:
                 print('no pending task')

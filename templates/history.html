@@ -41,6 +41,7 @@
                 <thead>
                   <tr>
                       <th>任务名称</th>
+                      <th>运行设备</th>
                       <th>创建时间</th>
                       <th>结束时间</th>
                       <th>执行结果</th>
@@ -51,10 +52,11 @@
                 <tbody>
                   <tr v-for="task in tasks">
                       <td>{{!task.task_name}}</td>
+                      <td>{{!task.device}}</td>
                       <td>{{!task.createdAt}}</td>
                       <td>{{!task.finishedAt}}</td>
                       <td :class="[task.result==='success'? 'success':'']">{{!task.result}}</td>
-                      <td><input type="button" v-if="task.result==='暂未完成'" id="termbutton" value="终止" @click="terminate(task.id)"></td>
+                      <td><input type="button" v-if="task.result==='暂未完成' || task.result==='重试中'" id="termbutton" value="终止" @click="terminate(task.id)"></td>
                       <td><a :href='"tasks/"+task.id+"/report"'>日志</a></td>
                   </tr>
                 </tbody>
