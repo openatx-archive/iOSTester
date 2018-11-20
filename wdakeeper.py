@@ -1,30 +1,71 @@
+#!/usr/bin/env python3
 # coding: utf-8
-# Author: codeskyblue
+#
+# author: codeskyblue
 
 import os
 import threading
 import time
 import subprocess
 import wda
-from six.moves import queue
-from logzero import logger
+import queue
 import atexit
 import signal
 import subprocess
 
-import wdadb
+# import wdadb
+
+import logzero
+from logzero import logger
+import logging
+import rethinkdb as r
+from rethinkdb.errors import RqlRuntimeError, RqlDriverError
 
 _DEVNULL = open(os.devnull, 'wb')
+logzero.loglevel(logging.INFO)
+
+
+RDB_HOST = os.environ.get('RDB_HOST') or 'localhost'
+RDB_PORT = os.environ.get('RDB_PORT') or 28015
+RDB_DBNAME = os.environ.get("RDB_DBNAME") or "iOSTest"
+
+
+class Database(object):
+    def __init__(self):
+        conn = r.connect(RDB_HOST, RDB_PORT)
+        try:
+            r.db_create(RDB_DBNAME).run(conn)
+            r.db(RDB_DBNAME).table_create("devices").run(conn)
+            print("App database created")
+        except (RqlRuntimeError, RqlDriverError):
+            print("App already exists")
+
+    def _run(self, rsql):
+        try:
+            c = r.connect(RDB_HOST, RDB_PORT, db=RDB_DBNAME)
+            return rsql.run(c)
+        except RqlDriverError:
+            logger.warning("No database connection could be established!")
+
+    def device_save(self, id: str, v: dict):
+        ret = self._run(r.table("devices").get(id).update(v))
+        if ret['skipped']:
+            v['id'] = id
+            self._run(r.table("devices").insert(v))
+
+    def device_reset(self):
+        self._run(r.table("devices").update({"status": "offline"}))
 
 
 class IDevice(object):
     """ IOS Device """
-    def __init__(self, udid: str, port: int, hookfunc, name=''):
+
+    def __init__(self, udid: str, port: int, hookfunc):
         self._udid = udid
         self._port = port
         self._que = queue.Queue()
         self._hookfunc = hookfunc
-        self._name = name
+        self._name = None
 
         self._iproxy_proc = subprocess.Popen(
             ["iproxy", str(port), "8100", udid], stdout=_DEVNULL, stderr=_DEVNULL)
@@ -35,10 +76,17 @@ class IDevice(object):
         self._client = wda.Client("http://localhost:%d" % port)
         self._last_status = None
         self.init_thread()
-    
+
     @property
     def udid(self):
         return self._udid
+
+    @property
+    def name(self):
+        if self._name:
+            return self._name
+        self._name = udid2name(self._udid)
+        return self._name
 
     def hook(self, status: str):
         """
@@ -73,7 +121,7 @@ class IDevice(object):
             ['sh', 'runwda.sh', self._udid], stdout=_DEVNULL, stderr=self._output_fd)
 
     def stop_wda(self):
-        logger.info("%s stop wda", self._udid)
+        logger.info("%s WDA stopped", self._udid)
         if self._wdaproc is None:
             logger.warning("%s wda is already killed", self._udid)
             return
@@ -96,22 +144,20 @@ class IDevice(object):
                 # should check here
                 if self.is_wda_ok():
                     self.hook("idle")
-                    logger.info("%s WDA is ready to use", self._udid)
+                    logger.debug("%s WDA is ready to use", self._udid)
                 else:
                     self.hook("preparing")
-                    logger.info("%s WDA is still waiting", self._udid)
-                    # time.sleep(10)
+                    logger.debug("%s WDA is still waiting", self._udid)
 
                     if time.time() - self._wda_started > 30:
                         logger.warning(
                             "%s WDA is down, restart after 3s", self._udid)
                         self.stop_wda()  # restart
+                time.sleep(3)
             else:
                 self.hook("offline")
                 self.stop_wda()
                 self._ok.wait()
-
-            time.sleep(3)
 
 
 def is_port_in_use(port):
@@ -143,27 +189,29 @@ def get_device_port(udid: str):
     return port
 
 
+def runcommand(*args, check=False):
+    p = subprocess.run(args, capture_output=True, check=check)
+    return p.stdout.strip().decode('UTF-8')
+
+
 def udid2name(udid):
     try:
-        p = subprocess.run(['idevicename', '-u', udid], capture_output=True, check=True)
-        return p.stdout.strip().decode('utf-8')
+        return runcommand('idevicename', '-u', udid, check=True)
     except subprocess.CalledProcessError:
-        return 'unknown'
+        return None
 
 
-def list_devices():
+def list_udids():
     """
     Returns:
-        dict {udid: name}
+        list of udid
     """
-    p = subprocess.run(['idevice_id', '-l'], capture_output=True, check=True)
-    udids = p.stdout.strip().decode('utf-8').splitlines()
-    return {udid: udid2name(udid) for udid in udids}
+    udids = runcommand('idevice_id', '-l').splitlines()
+    return udids
 
 
 def main():
-    ios_devices = {}
-    idevice_map = {}
+    idevices = {}
 
     # stop all process
     os.setpgrp()
@@ -173,38 +221,40 @@ def main():
 
     atexit.register(cleanup)
 
+    # init all
+    os.makedirs("logs", exist_ok=True)
+    db = Database()
+    db.device_reset()
+
     def hookfunc(idevice, status):
         """ id, name, port, status """
-        wdadb.device_save(idevice._udid, {
+        udid = idevice.udid
+        db.device_save(udid, {
             "port": idevice._port,
-            "name": idevice._name,
+            "name": idevice.name or 'unknown',
             "status": status,
         })
         logger.info(">>> %s [%s]", udid, status)
 
-    # init all
-    os.makedirs("logs", exist_ok=True)
-    wdadb.device_reset()
-
+    last_udids = []
     while True:
-        current_devs = list_devices()
-        offline_devs = set(ios_devices.keys()).difference(current_devs.keys())
-        online_devs = set(current_devs.keys()).difference(ios_devices.keys())
+        curr_udids = list_udids()
+        offlines = set(last_udids).difference(curr_udids)
+        onlines = set(curr_udids).difference(last_udids)
+        last_udids = curr_udids
 
-        ios_devices = current_devs
-
-        for udid in online_devs:
-            # stop wda watch
+        for udid in onlines:
             port = get_device_port(udid)
             logger.info("UDID: %s came online, port: %d", udid, port)
-            if udid not in idevice_map:
-                idevice_map[udid] = IDevice(udid, port, hookfunc, name=ios_devices[udid])
-            idevice_map[udid]._ok.set()
+            if udid not in idevices:
+                idevices[udid] = IDevice(
+                    udid, port, hookfunc)
+            idevices[udid]._ok.set()
 
-        for udid in offline_devs:
+        for udid in offlines:
             logger.warning("UDID: %s went offline" % udid)
             # start iproxy and wda watch(start wda, pull status() and check if cmd finished)
-            idevice_map[udid].set_offline()
+            idevices[udid].set_offline()
         time.sleep(.5)
 
 
