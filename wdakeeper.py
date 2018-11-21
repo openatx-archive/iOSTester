@@ -242,6 +242,7 @@ def main():
         """ id, name, port, status """
         udid = idevice.udid
         info = idevice._info.copy()
+        info['id'] = info.pop('udid')
         info['name'] = idevice.name or 'unknown'
         db.device_save(udid, info)
         logger.info(">>> %s [%s]", udid, status)
