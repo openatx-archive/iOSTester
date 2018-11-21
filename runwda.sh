@@ -9,4 +9,4 @@ sleep 5
 WDADIR="/Users/codeskyblue/Workspace/WebDriverAgent"
 UDID="$1"
 # 运行测试
-xcodebuild -project $WDADIR/WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner -destination "id=$UDID" test
+xcodebuild -project $WDADIR/WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner -destination "id=$UDID" test-without-building

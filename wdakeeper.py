@@ -57,6 +57,11 @@ class Database(object):
         self._run(r.table("devices").update({"status": "offline"}))
 
 
+_STATUS_PREPARING = "preparing"
+_STATUS_OFFLINE = "offline"
+_STATUS_IDLE = "idle"
+
+
 class IDevice(object):
     """ IOS Device """
 
@@ -75,6 +80,11 @@ class IDevice(object):
         self._output_fd = open("logs/%s-wdalog.txt" % udid, "wb")
         self._client = wda.Client("http://localhost:%d" % port)
         self._last_status = None
+        self._info = {
+            "udid": udid,
+            "port": port,
+            "status": _STATUS_PREPARING,
+        }
         self.init_thread()
 
     @property
@@ -100,6 +110,7 @@ class IDevice(object):
         if self._last_status == status:
             return
         self._last_status = status
+        self._info['status'] = status
         self._hookfunc(self, status)
 
     def set_offline(self):
@@ -130,7 +141,8 @@ class IDevice(object):
 
     def is_wda_ok(self):
         try:
-            self._client.status()
+            resp = self._client.status()
+            self._info['ip'] = resp['ios']['ip']
             return True
         except:
             return False
@@ -143,10 +155,10 @@ class IDevice(object):
                     self.start_wda()
                 # should check here
                 if self.is_wda_ok():
-                    self.hook("idle")
+                    self.hook(_STATUS_IDLE)
                     logger.debug("%s WDA is ready to use", self._udid)
                 else:
-                    self.hook("preparing")
+                    self.hook(_STATUS_PREPARING)
                     logger.debug("%s WDA is still waiting", self._udid)
 
                     if time.time() - self._wda_started > 30:
@@ -155,7 +167,7 @@ class IDevice(object):
                         self.stop_wda()  # restart
                 time.sleep(3)
             else:
-                self.hook("offline")
+                self.hook(_STATUS_OFFLINE)
                 self.stop_wda()
                 self._ok.wait()
 
@@ -229,11 +241,9 @@ def main():
     def hookfunc(idevice, status):
         """ id, name, port, status """
         udid = idevice.udid
-        db.device_save(udid, {
-            "port": idevice._port,
-            "name": idevice.name or 'unknown',
-            "status": status,
-        })
+        info = idevice._info.copy()
+        info['name'] = idevice.name or 'unknown'
+        db.device_save(udid, info)
         logger.info(">>> %s [%s]", udid, status)
 
     last_udids = []
